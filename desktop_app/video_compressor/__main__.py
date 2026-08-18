@@ -9,17 +9,23 @@ from .config import APP_NAME, CpuMode, encoder_threads, logical_cpu_count
 from .media import discover_binary
 
 
+def _diagnostic_output(message: str, *, error: bool = False) -> None:
+    stream = sys.stderr if error else sys.stdout
+    if stream is not None:
+        print(message, file=stream)
+
+
 def diagnostics() -> int:
-    print(f"{APP_NAME} {__version__}")
+    _diagnostic_output(f"{APP_NAME} {__version__}")
     cpus = logical_cpu_count()
-    print(f"logical_cpus={cpus}")
+    _diagnostic_output(f"logical_cpus={cpus}")
     for mode in CpuMode:
-        print(f"threads_{mode.value}={encoder_threads(mode, cpus)}")
+        _diagnostic_output(f"threads_{mode.value}={encoder_threads(mode, cpus)}")
     try:
-        print(f"ffmpeg={discover_binary('ffmpeg')}")
-        print(f"ffprobe={discover_binary('ffprobe')}")
+        _diagnostic_output(f"ffmpeg={discover_binary('ffmpeg')}")
+        _diagnostic_output(f"ffprobe={discover_binary('ffprobe')}")
     except FileNotFoundError as exc:
-        print(str(exc), file=sys.stderr)
+        _diagnostic_output(str(exc), error=True)
         return 1
     return 0
 

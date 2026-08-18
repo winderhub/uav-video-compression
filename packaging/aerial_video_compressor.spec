@@ -17,12 +17,20 @@ for required in (ffmpeg, ffprobe):
     if not required.is_file():
         raise SystemExit(f"缺少打包组件：{required}")
 
+data_files = [
+    (str(project_root / "packaging" / "THIRD_PARTY_NOTICES.txt"), "resources/licenses"),
+]
+for filename in ("FFmpeg-GPLv3-LICENSE.txt", "FFmpeg-BUILD-README.txt"):
+    candidate = binary_dir / filename
+    if candidate.is_file():
+        data_files.append((str(candidate), "resources/licenses"))
+
 
 a = Analysis(
     [str(project_root / "desktop_app" / "main.py")],
     pathex=[str(project_root / "desktop_app")],
     binaries=[(str(ffmpeg), "resources"), (str(ffprobe), "resources")],
-    datas=[],
+    datas=data_files,
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

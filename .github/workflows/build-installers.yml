@@ -1,0 +1,164 @@
+name: Build installers
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "发布版本号，例如 v0.1.0"
+        required: true
+        default: "v0.1.0"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: installers-${{ inputs.release_tag }}
+  cancel-in-progress: false
+
+jobs:
+  windows:
+    name: Windows 10/11 x64
+    runs-on: windows-2022
+    env:
+      RELEASE_TAG: ${{ inputs.release_tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Download pinned FFmpeg
+        run: python packaging/fetch_ffmpeg.py windows-modern
+
+      - name: Run tests with bundled FFmpeg
+        shell: pwsh
+        run: |
+          $vendor = (Resolve-Path "packaging/vendor/windows-x64-modern").Path
+          $env:VIDEO_COMPRESSOR_FFMPEG = Join-Path $vendor "ffmpeg.exe"
+          $env:VIDEO_COMPRESSOR_FFPROBE = Join-Path $vendor "ffprobe.exe"
+          $env:RUN_FFMPEG_INTEGRATION = "1"
+          python -m unittest discover -s tests -v
+
+      - name: Build application
+        shell: pwsh
+        run: .\packaging\windows\build.ps1 -PythonExe python -Target modern -SkipFetch
+
+      - name: Install Inno Setup when missing
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            choco install innosetup --yes --no-progress
+          }
+
+      - name: Build Windows installer
+        shell: pwsh
+        run: |
+          $version = $env:RELEASE_TAG -replace '^v', ''
+          if ($version -notmatch '^\d+\.\d+\.\d+([.-][0-9A-Za-z.-]+)?$') {
+            throw "release_tag 必须类似 v0.1.0"
+          }
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          & $iscc "/DMyAppVersion=$version" "packaging\windows\installer.iss"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64
+          path: dist/installer/*.exe
+          if-no-files-found: error
+
+  macos:
+    name: macOS ${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15-intel
+            arch: x86_64
+          - runner: macos-15
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    env:
+      RELEASE_TAG: ${{ inputs.release_tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Download pinned FFmpeg
+        run: python3 packaging/fetch_ffmpeg.py "macos-${{ matrix.arch }}"
+
+      - name: Run tests with bundled FFmpeg
+        run: |
+          vendor="$PWD/packaging/vendor/macos-${{ matrix.arch }}"
+          export VIDEO_COMPRESSOR_FFMPEG="$vendor/ffmpeg"
+          export VIDEO_COMPRESSOR_FFPROBE="$vendor/ffprobe"
+          export RUN_FFMPEG_INTEGRATION=1
+          python3 -m unittest discover -s tests -v
+
+      - name: Build application
+        run: packaging/macos/build.sh "${{ matrix.arch }}"
+
+      - name: Ad-hoc sign and create DMG
+        run: |
+          version="${RELEASE_TAG#v}"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "release_tag 必须类似 v0.1.0" >&2
+            exit 2
+          fi
+          app="dist/macos-${{ matrix.arch }}/Aerial Video Compressor.app"
+          codesign --force --deep --sign - "$app"
+          codesign --verify --deep --strict "$app"
+          "$app/Contents/MacOS/AerialVideoCompressor" --diagnose
+          stage="build/dmg-${{ matrix.arch }}"
+          rm -rf "$stage"
+          mkdir -p "$stage" dist/installer
+          ditto "$app" "$stage/Aerial Video Compressor.app"
+          ln -s /Applications "$stage/Applications"
+          hdiutil create -volname "Aerial Video Compressor" \
+            -srcfolder "$stage" -ov -format UDZO \
+            "dist/installer/AerialVideoCompressor-${version}-macOS-${{ matrix.arch }}.dmg"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-${{ matrix.arch }}
+          path: dist/installer/*.dmg
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub Release
+    needs: [windows, macos]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ inputs.release_tag }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-files
+
+      - name: Create or update release
+        shell: bash
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "release_tag 必须类似 v0.1.0" >&2
+            exit 2
+          fi
+          mapfile -t files < <(find release-files -type f -print)
+          if [[ ${#files[@]} -eq 0 ]]; then
+            echo "没有找到安装包" >&2
+            exit 2
+          fi
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "${files[@]}" --clobber
+          else
+            gh release create "$RELEASE_TAG" "${files[@]}" \
+              --target "$GITHUB_SHA" \
+              --title "Aerial Video Compressor $RELEASE_TAG" \
+              --generate-notes
+          fi

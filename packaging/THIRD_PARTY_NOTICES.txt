@@ -1,0 +1,23 @@
+Third-party software notice
+===========================
+
+Desktop distributions of Aerial Video Compressor bundle FFmpeg and FFprobe
+6.1.1 static executables with the GPL-licensed libx264 encoder enabled.
+
+Binary release and per-platform build information:
+https://github.com/eugeneware/ffmpeg-static/releases/tag/b6.1.1
+
+FFmpeg source revision used by the Windows build:
+https://github.com/FFmpeg/FFmpeg/commit/e38092ef93
+
+FFmpeg upstream source and license information:
+https://ffmpeg.org/download.html
+https://ffmpeg.org/legal.html
+
+x264 upstream source:
+https://code.videolan.org/videolan/x264
+
+The exact license and build README supplied with each binary are included in
+the application's resources/licenses directory. FFmpeg and x264 are separate
+command-line programs invoked by this application; no API credentials, signing
+certificates, passwords, or private keys are embedded in the distribution.

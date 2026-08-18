@@ -13,6 +13,8 @@ PROJECT_ROOT=$(cd -- "$SCRIPT_DIR/../.." && pwd)
 VENDOR_DIR="$PROJECT_ROOT/packaging/vendor/macos-$ARCH"
 VENV_DIR="$PROJECT_ROOT/build/venv-macos-$ARCH"
 
+python3 "$PROJECT_ROOT/packaging/fetch_ffmpeg.py" "macos-$ARCH"
+
 for name in ffmpeg ffprobe; do
     if [[ ! -x "$VENDOR_DIR/$name" ]]; then
         echo "缺少可执行文件: $VENDOR_DIR/$name" >&2

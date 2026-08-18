@@ -8,8 +8,7 @@ __pycache__/
 build/
 dist/
 .venv/
-packaging/vendor/*/ffmpeg*
-packaging/vendor/*/ffprobe*
+packaging/vendor/*/
 
 # Runtime state is kept beside the selected video directory, never in source control.
 .video-compressor/
