@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+
+# Desktop build outputs and local build environments
+build/
+dist/
+.venv/
+packaging/vendor/*/ffmpeg*
+packaging/vendor/*/ffprobe*
+
+# Runtime state is kept beside the selected video directory, never in source control.
+.video-compressor/
+*.compress_tmp.MP4
+*.restore_partial.MP4
