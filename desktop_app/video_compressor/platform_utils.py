@@ -43,7 +43,9 @@ def make_hidden(path: Path) -> None:
 
 def sync_file(path: Path) -> None:
     """Ask the OS to commit an app-created file before it replaces source data."""
-    with path.open("rb") as handle:
+    # Windows requires a writable file handle for FlushFileBuffers, which is
+    # what os.fsync() uses there. A read-only handle fails with EBADF.
+    with path.open("r+b") as handle:
         os.fsync(handle.fileno())
 
 

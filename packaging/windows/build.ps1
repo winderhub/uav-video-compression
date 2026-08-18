@@ -13,35 +13,35 @@ $VenvDir = Join-Path $ProjectRoot "build\venv-windows-$Target"
 if ($Target -eq "win7") {
     $PythonVersion = & $PythonExe -c "import sys; print('%d.%d' % sys.version_info[:2])"
     if ($PythonVersion -ne "3.8") {
-        throw "Windows 7 构建必须使用 Python 3.8，当前是 $PythonVersion。"
+        throw "Windows 7 builds require Python 3.8; current version is $PythonVersion."
     }
 }
 
 if (-not $SkipFetch) {
     & $PythonExe (Join-Path $ProjectRoot "packaging\fetch_ffmpeg.py") "windows-$Target"
     if ($LASTEXITCODE -ne 0) {
-        throw "FFmpeg 组件下载或校验失败。"
+        throw "Downloading or verifying the FFmpeg components failed."
     }
 }
 
 foreach ($Name in @("ffmpeg.exe", "ffprobe.exe")) {
     if (-not (Test-Path (Join-Path $VendorDir $Name))) {
-        throw "缺少 $VendorDir\$Name。请放入与目标 Windows 版本兼容的 FFmpeg。"
+        throw "Missing $VendorDir\$Name. Provide FFmpeg binaries compatible with the target Windows version."
     }
 }
 
 & $PythonExe -m venv $VenvDir
 if ($LASTEXITCODE -ne 0) {
-    throw "创建 Python 虚拟环境失败。"
+    throw "Creating the Python virtual environment failed."
 }
 $BuildPython = Join-Path $VenvDir "Scripts\python.exe"
 & $BuildPython -m pip install --upgrade pip
 if ($LASTEXITCODE -ne 0) {
-    throw "升级 pip 失败。"
+    throw "Upgrading pip failed."
 }
 & $BuildPython -m pip install -r (Join-Path $ProjectRoot "packaging\requirements-build.txt")
 if ($LASTEXITCODE -ne 0) {
-    throw "安装打包依赖失败。"
+    throw "Installing the packaging dependencies failed."
 }
 
 $env:VIDEO_COMPRESSOR_PLATFORM_BIN_DIR = $VendorDir
@@ -52,10 +52,10 @@ try {
         --workpath (Join-Path $ProjectRoot "build\pyinstaller-windows-$Target") `
         (Join-Path $ProjectRoot "packaging\aerial_video_compressor.spec")
     if ($LASTEXITCODE -ne 0) {
-        throw "PyInstaller 构建失败。"
+        throw "The PyInstaller build failed."
     }
 } finally {
     Pop-Location
 }
 
-Write-Host "构建完成：dist\windows-$Target\AerialVideoCompressor"
+Write-Host "Build completed: dist\windows-$Target\AerialVideoCompressor"
