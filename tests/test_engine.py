@@ -174,9 +174,10 @@ class EngineTests(unittest.TestCase):
                 settings=CompressionSettings(mode=CpuMode.BALANCED),
                 staging_dir=staging,
             )
+            resolved_root = root.resolve()
 
             def fake_available(path):
-                return 0 if Path(path) == root else 100 * 1024**3
+                return 0 if Path(path).resolve() == resolved_root else 100 * 1024**3
 
             with mock.patch("desktop_app.video_compressor.engine.available_bytes", side_effect=fake_available), mock.patch(
                 "desktop_app.video_compressor.engine.same_filesystem", return_value=False
@@ -207,9 +208,10 @@ class EngineTests(unittest.TestCase):
                 settings=CompressionSettings(mode=CpuMode.BALANCED),
                 staging_dir=staging,
             )
+            resolved_root = root.resolve()
 
             def fake_available(path):
-                return 0 if Path(path) == root else 100 * 1024**3
+                return 0 if Path(path).resolve() == resolved_root else 100 * 1024**3
 
             with mock.patch("desktop_app.video_compressor.engine.available_bytes", side_effect=fake_available), mock.patch(
                 "desktop_app.video_compressor.engine.same_filesystem", return_value=False
