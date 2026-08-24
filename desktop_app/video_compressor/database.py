@@ -130,6 +130,7 @@ class TaskDatabase:
         now = utc_now()
         with self._connect() as connection:
             for path in paths:
+                path = path.resolve()
                 stat = path.stat()
                 relative = path.relative_to(self.source_root).as_posix()
                 row = connection.execute(

@@ -46,6 +46,14 @@ SHA256 = {
 }
 
 
+def configure_utf8_stdio() -> None:
+    """Keep status messages printable on Windows CI runners using cp1252."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8", errors="replace")
+
+
 def file_sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -91,6 +99,7 @@ def fetch(url: str, destination: Path, expected_sha256: str) -> None:
 
 
 def main() -> int:
+    configure_utf8_stdio()
     parser = argparse.ArgumentParser(description="下载桌面安装包所需的固定 FFmpeg 组件")
     parser.add_argument("target", choices=sorted(TARGETS))
     args = parser.parse_args()
