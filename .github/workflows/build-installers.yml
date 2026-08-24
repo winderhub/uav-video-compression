@@ -132,6 +132,13 @@ jobs:
           codesign --force --deep --sign - "$app"
           codesign --verify --deep --strict "$app"
           "$app/Contents/MacOS/AerialVideoCompressor" --diagnose
+          # The Intel runner has limited free space. The signed app is now
+          # self-contained, so release build caches can be removed before
+          # hdiutil makes its additional staging copies.
+          rm -rf "build/venv-macos-${{ matrix.arch }}"
+          rm -rf "build/pyinstaller-macos-${{ matrix.arch }}"
+          rm -rf "packaging/vendor/macos-${{ matrix.arch }}"
+          rm -rf "$HOME/Library/Caches/pip"
           stage="build/dmg-${{ matrix.arch }}"
           rm -rf "$stage"
           mkdir -p "$stage" dist/installer
